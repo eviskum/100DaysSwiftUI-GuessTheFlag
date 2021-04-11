@@ -7,10 +7,107 @@
 
 import SwiftUI
 
+struct Shake: GeometryEffect {
+    var amount: CGFloat = 10
+    var shakesPerUnit = 3
+    var animatableData: CGFloat
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        ProjectionTransform(CGAffineTransform(translationX:
+            amount * sin(animatableData * .pi * CGFloat(shakesPerUnit)),
+            y: 0))
+    }
+}
+
 struct ContentView: View {
+    @State private var countries = ["Estonia", "France", "Germany", "Ireland", "Italy", "Nigeria", "Poland", "Russia", "Spain", "UK", "US"].shuffled()
+    @State private var correctAnswer = Int.random(in: 0...2)
+    
+    @State private var showingScore = false
+    @State private var scoreTitle = ""
+    
+    @State private var userScore = 0
+    
+    @State private var rotationAmount = [0.0, 0.0, 0.0]
+    @State private var opacityAmount = [1.0, 1.0, 1.0]
+    @State private var attempts = [0, 0, 0]
+    
     var body: some View {
-        Text("Hello, world!")
-            .padding()
+        ZStack {
+            LinearGradient(gradient: Gradient(colors: [Color.blue, Color.black]), startPoint: .top, endPoint: .bottom)
+                .edgesIgnoringSafeArea(.all)
+
+            VStack(spacing: 30) {
+                VStack {
+                    Text("Tap the flag of")
+                        .foregroundColor(.white)
+                    
+                    Text(countries[correctAnswer])
+                        .foregroundColor(.white)
+                        .font(.largeTitle)
+                        .fontWeight(.black)
+                }
+                
+                ForEach(0..<3) { number in
+                    Button(action: {
+//                        withAnimation (.interpolatingSpring(stiffness: 5, damping: 1)){
+                        withAnimation (){
+                            self.flagTapped(number)
+                        }
+                    }) {
+                        Image(self.countries[number])
+                            .renderingMode(.original)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(Color.black, lineWidth: 1))
+                            .shadow(color: .black, radius: 2)
+                            .rotation3DEffect(.degrees(self.rotationAmount[number]), axis: (x: 0, y: 1, z:0))
+                            .opacity(self.opacityAmount[number])
+                            .modifier(Shake(animatableData: CGFloat(self.attempts[number])))
+//                            .animation(.rotation3DEffect(.degrees(Double(360)), axis: (x: 0, y: 1, z:0)))
+//                                Animation(.rotation3DEffect(.degrees(Double(360)), axis: (x: 0, y: 1, z:0)))
+//                                Animation(.spring())
+//                            )
+                    }
+                }
+                
+                Spacer()
+            }
+            .alert(isPresented: $showingScore) {
+                Alert(title: Text(scoreTitle), message: Text("Your score is \(userScore)"), dismissButton: .default(Text("Continue")) {
+                    self.askQuestion()
+                })
+            }
+        }
+    }
+    
+    func flagTapped(_ number: Int) {
+        if number == correctAnswer {
+            scoreTitle = "Correct"
+            userScore += 1
+            switch number {
+            case 0:
+                opacityAmount[1] = 0.25
+                opacityAmount[2] = 0.25
+            case 1:
+                opacityAmount[0] = 0.25
+                opacityAmount[2] = 0.25
+            default:
+                opacityAmount[0] = 0.25
+                opacityAmount[1] = 0.25
+            }
+            rotationAmount[number] += 360
+        } else {
+            scoreTitle = "Wrong, that is the flag of \(countries[number])"
+            attempts[number] += 1
+        }
+        
+        showingScore = true
+    }
+    
+    func askQuestion() {
+        countries.shuffle()
+        correctAnswer = Int.random(in: 0...2)
+        opacityAmount = [1.0, 1.0, 1.0]
     }
 }
 
